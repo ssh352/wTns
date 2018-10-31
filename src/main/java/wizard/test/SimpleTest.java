@@ -9,11 +9,14 @@ package wizard.test;
 
 
 public class SimpleTest {
-    final static String ctp1_MdAddress = "tcp://180.168.146.187:10010";
     public static void main(String[] args) {
-        String[] symbols = {"rb1901"};
-        CTPMd ctpMd = new CTPMd(ctp1_MdAddress, "9999", "", "",
-                "PREfix", symbols);
+        String ctp1_MdAddress = "tcp://";
+        String[] symbols = {"kk"};
+        ctp1_MdAddress = ctp1_MdAddress + args[0];
+        symbols[0] = args[1];
+
+        CTPMd ctpMd = new CTPMd(ctp1_MdAddress, "9999", "125268", "140706",
+                "PREfix ", symbols);
         ctpMd.start();
     }
 }

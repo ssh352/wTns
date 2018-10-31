@@ -1,4 +1,4 @@
-package interfaces;
+package wizard.interfaces;
 
 /**
  * Copyright (C) 2006-2017  AdMaster Co.Ltd.

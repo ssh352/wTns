@@ -2,7 +2,6 @@ package wizard.test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -35,12 +34,11 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 	public String gatewayLogInfo;
 	public String tradingDayStr;
 	public String[] symbols;
-	public HashMap<String, String> contractExchangeMap;
 	public CThostFtdcMdApi cThostFtdcMdApi;
 
-	private boolean connecting = false; // 避免重复调用
-	private boolean connected = false; // 前置机连接状态
-	private boolean logined = false; // 登陆状态
+	private boolean connecting = false;
+	private boolean connected = false;
+	private boolean loginned = false;
 
 
 	CTPMd(String mdAddress, String brokerID, String userID, String password,
@@ -55,7 +53,6 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 
 	static{
 		try {
-			Thread.sleep(10000);
 			String envTmpDir = "/tmp";
 			String tempLibPath = envTmpDir + File.separator + "xyz" + File.separator + "redtorch" + File.separator + "api"
 					+ File.separator + "jctp" + File.separator + "lib";
@@ -73,12 +70,6 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 	}
 
 
-
-
-
-	/**
-	 * 连接
-	 */
 	public synchronized boolean start() {
 		if (alive() || connecting) {
 			return true;
@@ -92,7 +83,7 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 			cThostFtdcMdApi.RegisterSpi(null);
 			cThostFtdcMdApi.Release();
 			connected = false;
-			logined = false;
+			loginned = false;
 
 		}
 		String envTmpDir = System.getProperty("java.io.tmpdir");
@@ -102,12 +93,12 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 		if (!tempFile.getParentFile().exists()) {
 			try {
 				FileUtils.forceMkdirParent(tempFile);
-				log.info(gatewayLogInfo + "创建临时文件夹" + tempFile.getParentFile().getAbsolutePath());
+				log.info(gatewayLogInfo + "make tmp dir " + tempFile.getParentFile().getAbsolutePath());
 			} catch (IOException e) {
-				log.error(gatewayLogInfo + "创建临时文件夹失败" + tempFile.getParentFile().getAbsolutePath());
+				log.error(gatewayLogInfo + "make tmp dir failed " + tempFile.getParentFile().getAbsolutePath());
 			}
 		}
-		log.info(gatewayLogInfo + "使用临时文件夹" + tempFile.getParentFile().getAbsolutePath());
+		log.info(gatewayLogInfo + "using " + tempFile.getParentFile().getAbsolutePath());
 
 		cThostFtdcMdApi = CThostFtdcMdApi.CreateFtdcMdApi(tempFile.getAbsolutePath());
 		cThostFtdcMdApi.RegisterSpi(this);
@@ -116,12 +107,12 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 		cThostFtdcMdApi.Init();
 		// todo : why raw not join ?
 		cThostFtdcMdApi.Join();
+		//while(true){
+		//	System.currentTimeMillis();
+		//}
 		return true;
 	}
 
-	/**
-	 * 关闭
-	 */
 	public synchronized boolean stop() {
 		if (!alive()) {
 			return true;
@@ -131,64 +122,45 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 			cThostFtdcMdApi.RegisterSpi(null);
 			cThostFtdcMdApi.Release();
 			connected = false;
-			logined = false;
+			loginned = false;
 			connecting = false;
 		}
 		return true;
 	}
 
-	/**
-	 * 返回接口状态
-	 * 
-	 * @return
-	 */
 	public boolean alive() {
-		return connected && logined;
+		return connected && loginned;
 	}
 
-	/**
-	 * 获取交易日
-	 * 
-	 * @return
-	 */
 	public String getTradingDay() {
 		return tradingDayStr;
 	}
 
-	/**
-	 * 订阅行情
-	 * 
-	 * @param symbol
-	 */
 	public void subscribe(String symbol) {
 		if (alive()) {
 			String[] symbolArray = new String[1];
 			symbolArray[0] = symbol;
 			cThostFtdcMdApi.SubscribeMarketData(symbolArray, 1);
 		} else {
-			log.warn(gatewayLogInfo + "无法订阅行情,行情服务器尚未连接成功");
+			log.warn(gatewayLogInfo + "can't subscribe, not connected yet");
 		}
 	}
 
-	/**
-	 * 退订行情
-	 */
 	public void unSubscribe(String rtSymbol) {
 		if (alive()) {
 			String[] rtSymbolArray = new String[1];
 			rtSymbolArray[0] = rtSymbol;
 			cThostFtdcMdApi.UnSubscribeMarketData(rtSymbolArray, 1);
 		} else {
-			log.warn(gatewayLogInfo + "退订无效,行情服务器尚未连接成功");
+			log.warn(gatewayLogInfo + "can't unsubscribe, not conneted yet");
 		}
 	}
 
 	private void login() {
 		if (StringUtils.isEmpty(brokerID) || StringUtils.isEmpty(userID) || StringUtils.isEmpty(password)) {
-			log.error(gatewayLogInfo + "BrokerID UserID Password不允许为空");
+			log.error(gatewayLogInfo + "BrokerID UserID Password can't be empty");
 			return;
 		}
-		// 登录
 		CThostFtdcReqUserLoginField userLoginField = new CThostFtdcReqUserLoginField();
 		userLoginField.setBrokerID(brokerID);
 		userLoginField.setUserID(userID);
@@ -196,92 +168,82 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 		cThostFtdcMdApi.ReqUserLogin(userLoginField, 0);
 	}
 
-	// 前置机联机回报
 	public void OnFrontConnected() {
-		log.info(gatewayLogInfo + "行情接口前置机已连接");
-		// 修改前置机连接状态为true
+		log.info(gatewayLogInfo + "front machine is connected");
 		connected = true;
 		connecting = false;
 		login();
 	}
 
-	// 前置机断开回报
 	public void OnFrontDisconnected(int nReason) {
-		log.info(gatewayLogInfo + "行情接口前置机已断开,Reason:" + nReason);
+		log.info(gatewayLogInfo + "front machine is disconnected, Reason:" + nReason);
 		this.connected = false;
 	}
 
-	// 登录回报
 	public void OnRspUserLogin(CThostFtdcRspUserLoginField pRspUserLogin, CThostFtdcRspInfoField pRspInfo,
 			int nRequestID, boolean bIsLast) {
 		if (pRspInfo.getErrorID() == 0) {
 			log.info("{}OnRspUserLogin! TradingDay:{},SessionID:{},BrokerID:{},UserID:{}", gatewayLogInfo,
 					pRspUserLogin.getTradingDay(), pRspUserLogin.getSessionID(), pRspUserLogin.getBrokerID(),
 					pRspUserLogin.getUserID());
-			// 修改登录状态为true
-			this.logined = true;
+			this.loginned = true;
 			tradingDayStr = pRspUserLogin.getTradingDay();
-			log.info("{}行情接口获取到的交易日为{}", gatewayLogInfo, tradingDayStr);
-			// 重新订阅之前的合约
+			log.info("{} get trading day {}", gatewayLogInfo, tradingDayStr);
 			if (this.symbols != null && this.symbols.length > 0) {
-				cThostFtdcMdApi.SubscribeMarketData(this.symbols, this.symbols.length + 1); // why + 1?
+				cThostFtdcMdApi.SubscribeMarketData(this.symbols, this.symbols.length);
 			}
 		} else {
-			log.warn("{}行情接口登录回报错误! ErrorID:{},ErrorMsg:{}", gatewayLogInfo, pRspInfo.getErrorID(),
+			log.warn("{}md login error! ErrorID:{},ErrorMsg:{}", gatewayLogInfo, pRspInfo.getErrorID(),
 					pRspInfo.getErrorMsg());
 		}
 
 	}
 
-	// 心跳警告
 	public void OnHeartBeatWarning(int nTimeLapse) {
-		log.warn(gatewayLogInfo + "行情接口心跳警告 nTimeLapse:" + nTimeLapse);
+		log.warn(gatewayLogInfo + "md heartbeat nTimeLapse:" + nTimeLapse);
 	}
 
-	// 登出回报
 	public void OnRspUserLogout(CThostFtdcUserLogoutField pUserLogout, CThostFtdcRspInfoField pRspInfo, int nRequestID,
 			boolean bIsLast) {
 		if (pRspInfo.getErrorID() != 0) {
-			log.info("{}OnRspUserLogout!ErrorID:{},ErrorMsg:{}", gatewayLogInfo, pRspInfo.getErrorID(),
+			log.info("{} OnRspUserLogout!ErrorID:{}, ErrorMsg:{}", gatewayLogInfo, pRspInfo.getErrorID(),
 					pRspInfo.getErrorMsg());
 		} else {
-			log.info("{}OnRspUserLogout!BrokerID:{},UserID:{}", gatewayLogInfo, pUserLogout.getBrokerID(),
+			log.info("{} OnRspUserLogout!BrokerID:{}, UserID:{}", gatewayLogInfo, pUserLogout.getBrokerID(),
 					pUserLogout.getUserID());
 
 		}
-		this.logined = false;
+		this.loginned = false;
 	}
 
-	// 错误回报
 	public void OnRspError(CThostFtdcRspInfoField pRspInfo, int nRequestID, boolean bIsLast) {
-		log.info("{}行情接口错误回报!ErrorID:{},ErrorMsg:{},RequestID:{},isLast{}", gatewayLogInfo, pRspInfo.getErrorID(),
+		log.info("{}md respError !ErrorID:{},ErrorMsg:{},RequestID:{},isLast{}", gatewayLogInfo, pRspInfo.getErrorID(),
 				pRspInfo.getErrorMsg(), nRequestID, bIsLast);
 	}
 
-	// 订阅合约回报
 	public void OnRspSubMarketData(CThostFtdcSpecificInstrumentField pSpecificInstrument,
 			CThostFtdcRspInfoField pRspInfo, int nRequestID, boolean bIsLast) {
 		if (pRspInfo.getErrorID() == 0) {
-			log.info(gatewayLogInfo + "OnRspSubMarketData! 订阅合约成功:" + pSpecificInstrument.getInstrumentID());
+			log.info(gatewayLogInfo + "OnRspSubMarketData! subscribe succeed: " + pSpecificInstrument.getInstrumentID());
 		} else {
-			log.warn(gatewayLogInfo + "OnRspSubMarketData! 订阅合约失败,ErrorID：" + pRspInfo.getErrorID() + "ErrorMsg:"
+			log.warn(gatewayLogInfo + "OnRspSubMarketData! subscribe failed, ErrorID：" + pRspInfo.getErrorID() + "ErrorMsg:"
 					+ pRspInfo.getErrorMsg());
 		}
 	}
 
-	// 退订合约回报
 	public void OnRspUnSubMarketData(CThostFtdcSpecificInstrumentField pSpecificInstrument,
 			CThostFtdcRspInfoField pRspInfo, int nRequestID, boolean bIsLast) {
 		if (pRspInfo.getErrorID() == 0) {
-			log.info(gatewayLogInfo + "OnRspUnSubMarketData! 退订合约成功:" + pSpecificInstrument.getInstrumentID());
+			log.info(gatewayLogInfo + "OnRspUnSubMarketData! succeed :" + pSpecificInstrument.getInstrumentID());
 		} else {
-			log.warn(gatewayLogInfo + "OnRspUnSubMarketData! 退订合约失败,ErrorID：" + pRspInfo.getErrorID() + "ErrorMsg:"
+			log.warn(gatewayLogInfo + "OnRspUnSubMarketData! failed, ErrorID：" + pRspInfo.getErrorID() + "ErrorMsg:"
 					+ pRspInfo.getErrorMsg());
 		}
 	}
 
-	// 合约行情推送
 	public void OnRtnDepthMarketData(CThostFtdcDepthMarketDataField pDepthMarketData) {
+	    log.info("md start get tick");
+	    // todo : why new Thread every tick ?
 		if (pDepthMarketData != null) {
 
 			// // T2T Test
@@ -290,11 +252,6 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 			// }
 			String symbol = pDepthMarketData.getInstrumentID();
 
-			if (!contractExchangeMap.containsKey(symbol)) {
-				log.info(gatewayLogInfo + "收到合约" + symbol + "行情,但尚未获取到交易所信息,丢弃");
-			}
-
-			// 上期所 郑商所正常,大商所错误
 			// TODO 大商所时间修正
 			Long updateTime = Long.valueOf(pDepthMarketData.getUpdateTime().replaceAll(":", ""));
 			Long updateMillisec = (long) pDepthMarketData.getUpdateMillisec();
@@ -321,7 +278,7 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 			// change above
 
 
-			String exchange = contractExchangeMap.get(symbol);
+			String exchange = "needExchange";
 			String rtSymbol = symbol + "." + exchange;
 			String tradingDay = tradingDayStr;
 			String actionDayStr = pDepthMarketData.getActionDay();
@@ -380,7 +337,7 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 			Integer askVolume10 = 0;
 
 			// todo : data exchange with other
-			System.err.println();
+			log.info("one ce");
 			/*
 			ctpGateway.emitTick(gatewayID, symbol, exchange, rtSymbol, tradingDay, actionDayStr, actionTime, dateTime,
 					status, lastPrice, lastVolume, volume, openInterest, preOpenInterest, preClosePrice, preSettlePrice,
@@ -393,23 +350,20 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 
 			*/
 		} else {
-			log.warn("{}OnRtnDepthMarketData! 收到行情信息为空", gatewayLogInfo);
+			log.warn("{}OnRtnDepthMarketData! get empty ticks", gatewayLogInfo);
 		}
 	}
 
-	// 订阅期权询价
 	public void OnRspSubForQuoteRsp(CThostFtdcSpecificInstrumentField pSpecificInstrument,
 			CThostFtdcRspInfoField pRspInfo, int nRequestID, boolean bIsLast) {
 		log.info("{}OnRspSubForQuoteRsp!", gatewayLogInfo);
 	}
 
-	// 退订期权询价
 	public void OnRspUnSubForQuoteRsp(CThostFtdcSpecificInstrumentField pSpecificInstrument,
 			CThostFtdcRspInfoField pRspInfo, int nRequestID, boolean bIsLast) {
 		log.info("{}OnRspUnSubForQuoteRsp!", gatewayLogInfo);
 	}
 
-	// 期权询价推送
 	public void OnRtnForQuoteRsp(CThostFtdcForQuoteRspField pForQuoteRsp) {
 		log.info("{}OnRspUnSubForQuoteRsp!", gatewayLogInfo);
 	}
@@ -417,7 +371,7 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 	// todo : what to consider more
 	// 1, heartbeat
 	// 2, cpu not idle
-	// 3, data exchange
+	// 3, how to get exchange
 	// 4, comment using english
 	// 5, test auto reconnect
 }
