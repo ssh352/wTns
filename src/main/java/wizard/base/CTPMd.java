@@ -1,4 +1,4 @@
-package wizard.test;
+package wizard.base;
 
 import java.io.File;
 import java.io.IOException;
@@ -8,6 +8,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import wizard.interfaces.MD;
+import wizard.test.EventListener;
+import wizard.test.Tick;
 import wizard.tools.CommonUtil;
 import wizard.tools.StringUtils;
 import xyz.redtorch.api.jctp.CThostFtdcDepthMarketDataField;
@@ -35,13 +37,15 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 	public String tradingDayStr;
 	public String[] symbols;
 	public CThostFtdcMdApi cThostFtdcMdApi;
+	public Board board;
+	public EventListener writer;
 
 	private boolean connecting = false;
 	private boolean connected = false;
 	private boolean loginned = false;
 
 
-	CTPMd(String mdAddress, String brokerID, String userID, String password,
+	public CTPMd(Board board, String mdAddress, String brokerID, String userID, String password,
 		  String gatewayLogInfo, String[] symbols) {
 		this.mdAddress = mdAddress;
 		this.brokerID = brokerID;
@@ -49,6 +53,9 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 		this.password = password;
 		this.gatewayLogInfo = gatewayLogInfo;
 		this.symbols = symbols;
+		this.board = board;
+		board.addEngine(gatewayLogInfo, this);
+		this.writer = board.getWriterByName("md", gatewayLogInfo).methodWriter(EventListener.class);
 	}
 
 	static{
@@ -246,109 +253,13 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 	    // todo : why new Thread every tick ?
 		if (pDepthMarketData != null) {
 
-			// // T2T Test
-			// if("IH1805".equals(pDepthMarketData.getInstrumentID())) {
-			// System.out.println("T2T-Tick-"+System.nanoTime());
-			// }
-			String symbol = pDepthMarketData.getInstrumentID();
-
 			// TODO 大商所时间修正
 			Long updateTime = Long.valueOf(pDepthMarketData.getUpdateTime().replaceAll(":", ""));
 			Long updateMillisec = (long) pDepthMarketData.getUpdateMillisec();
 			Long actionDay = Long.valueOf(pDepthMarketData.getActionDay());
 
-			String updateDateTimeWithMS = (actionDay * 100 * 100 * 100 * 1000 + updateTime * 1000 + updateMillisec)
-					+ "";
-
-			/*  todo : parse date time
-			DateTime dateTime;
-			try {
-				dateTime = RtConstant.DT_FORMAT_WITH_MS_INT_FORMATTER.parseDateTime(updateDateTimeWithMS);
-			} catch (Exception e) {
-				log.error("{}解析日期发生异常", gatewayLogInfo, e);
-				return;
-			}
-			String actionTime = dateTime.toString(RtConstant.T_FORMAT_WITH_MS_INT_FORMATTER);
-
-			*/
-
-			String dateTime = "whatDataTime";
-			String actionTime = "whatActionTime";
-
-			// change above
-
-
-			String exchange = "needExchange";
-			String rtSymbol = symbol + "." + exchange;
-			String tradingDay = tradingDayStr;
-			String actionDayStr = pDepthMarketData.getActionDay();
-			Integer status = 0;
-			Double lastPrice = pDepthMarketData.getLastPrice();
-			Integer lastVolume = 0;
-			Integer volume = pDepthMarketData.getVolume();
-			Double openInterest = pDepthMarketData.getOpenInterest();
-			Long preOpenInterest = 0L;
-			Double preClosePrice = pDepthMarketData.getPreClosePrice();
-			Double preSettlePrice = pDepthMarketData.getPreSettlementPrice();
-			Double openPrice = pDepthMarketData.getOpenPrice();
-			Double highPrice = pDepthMarketData.getHighestPrice();
-			Double lowPrice = pDepthMarketData.getLowestPrice();
-			Double upperLimit = pDepthMarketData.getUpperLimitPrice();
-			Double lowerLimit = pDepthMarketData.getLowerLimitPrice();
-			Double bidPrice1 = pDepthMarketData.getBidPrice1();
-			Double bidPrice2 = pDepthMarketData.getBidPrice2();
-			Double bidPrice3 = pDepthMarketData.getBidPrice3();
-			Double bidPrice4 = pDepthMarketData.getBidPrice4();
-			Double bidPrice5 = pDepthMarketData.getBidPrice5();
-			Double bidPrice6 = 0d;
-			Double bidPrice7 = 0d;
-			Double bidPrice8 = 0d;
-			Double bidPrice9 = 0d;
-			Double bidPrice10 = 0d;
-			Double askPrice1 = pDepthMarketData.getAskPrice1();
-			Double askPrice2 = pDepthMarketData.getAskPrice2();
-			Double askPrice3 = pDepthMarketData.getAskPrice3();
-			Double askPrice4 = pDepthMarketData.getAskPrice4();
-			Double askPrice5 = pDepthMarketData.getAskPrice5();
-			Double askPrice6 = 0d;
-			Double askPrice7 = 0d;
-			Double askPrice8 = 0d;
-			Double askPrice9 = 0d;
-			Double askPrice10 = 0d;
-			Integer bidVolume1 = pDepthMarketData.getBidVolume1();
-			Integer bidVolume2 = pDepthMarketData.getBidVolume2();
-			Integer bidVolume3 = pDepthMarketData.getBidVolume3();
-			Integer bidVolume4 = pDepthMarketData.getBidVolume4();
-			Integer bidVolume5 = pDepthMarketData.getBidVolume5();
-			Integer bidVolume6 = 0;
-			Integer bidVolume7 = 0;
-			Integer bidVolume8 = 0;
-			Integer bidVolume9 = 0;
-			Integer bidVolume10 = 0;
-			Integer askVolume1 = pDepthMarketData.getAskVolume1();
-			Integer askVolume2 = pDepthMarketData.getAskVolume2();
-			Integer askVolume3 = pDepthMarketData.getAskVolume3();
-			Integer askVolume4 = pDepthMarketData.getAskVolume4();
-			Integer askVolume5 = pDepthMarketData.getAskVolume5();
-			Integer askVolume6 = 0;
-			Integer askVolume7 = 0;
-			Integer askVolume8 = 0;
-			Integer askVolume9 = 0;
-			Integer askVolume10 = 0;
-
-			// todo : data exchange with other
-			log.info("one ce");
-			/*
-			ctpGateway.emitTick(gatewayID, symbol, exchange, rtSymbol, tradingDay, actionDayStr, actionTime, dateTime,
-					status, lastPrice, lastVolume, volume, openInterest, preOpenInterest, preClosePrice, preSettlePrice,
-					openPrice, highPrice, lowPrice, upperLimit, lowerLimit, bidPrice1, bidPrice2, bidPrice3, bidPrice4,
-					bidPrice5, bidPrice6, bidPrice7, bidPrice8, bidPrice9, bidPrice10, askPrice1, askPrice2, askPrice3,
-					askPrice4, askPrice5, askPrice6, askPrice7, askPrice8, askPrice9, askPrice10, bidVolume1,
-					bidVolume2, bidVolume3, bidVolume4, bidVolume5, bidVolume6, bidVolume7, bidVolume8, bidVolume9,
-					bidVolume10, askVolume1, askVolume2, askVolume3, askVolume4, askVolume5, askVolume6, askVolume7,
-					askVolume8, askVolume9, askVolume10);
-
-			*/
+			//  todo : parse date time
+			writer.onTick(new Tick(gatewayLogInfo, pDepthMarketData));
 		} else {
 			log.warn("{}OnRtnDepthMarketData! get empty ticks", gatewayLogInfo);
 		}
@@ -374,4 +285,16 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 	// 3, how to get exchange
 	// 4, comment using english
 	// 5, test auto reconnect
+	public static void main(String[] args) {
+		final String mdName = "fakeMd1";
+		String ctp1_MdAddress = "tcp://";
+		String[] symbols = {"kk"};
+		ctp1_MdAddress = ctp1_MdAddress + args[0];
+		symbols[0] = args[1];
+		Board board = new Board();
+
+		CTPMd ctpMd = new CTPMd(board, ctp1_MdAddress, "9999", "125268", "140706",
+				mdName, symbols);
+		ctpMd.start();
+	}
 }
