@@ -5,11 +5,13 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import net.openhft.chronicle.bytes.MethodReader;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import wizard.interfaces.CtpConstant;
 import wizard.interfaces.RtConstant;
+import wizard.interfaces.Strategy;
 import wizard.interfaces.TD;
 import wizard.test.*;
 import wizard.tools.StringUtils;
@@ -30,6 +32,8 @@ public class CTPTd extends CThostFtdcTraderSpi implements TD {
 	private String authCode;
 	private String gatewayName;
 	private Board board;
+	public Strategy writer;
+	public MethodReader reader;
 	// private String gatewayDisplayName;
 
 	private HashMap<String, Position> positionMap = new HashMap<>();
@@ -44,7 +48,10 @@ public class CTPTd extends CThostFtdcTraderSpi implements TD {
 		this.password    = password;
 		this.authCode    = authCode;
 		this.gatewayName = gatewayName;
-
+		this.board       = board;
+		board.addEngine(gatewayName, this);
+		this.writer = board.getWriterByName("stIn", gatewayName).methodWriter(Strategy.class);
+		this.reader = board.getReaderByName("tdIn", gatewayName).methodReader(this);
 	}
 
 	private CThostFtdcTraderApi cThostFtdcTraderApi;
@@ -101,7 +108,9 @@ public class CTPTd extends CThostFtdcTraderSpi implements TD {
 		cThostFtdcTraderApi.RegisterFront(tdAddress);
 		connecting = true;
 		cThostFtdcTraderApi.Init();
-		return true;
+		while(true){
+			this.reader.readOne();
+		}
 	}
 
 	/**
@@ -552,34 +561,30 @@ public class CTPTd extends CThostFtdcTraderSpi implements TD {
 	// 委托回报
 	public void OnRtnOrder(CThostFtdcOrderField pOrder) {
 
+	    Order order = new Order();
 		String newRef = pOrder.getOrderRef().replace(" ", "");
 		// 更新最大报单编号
 		orderRef = new AtomicInteger(Math.max(orderRef.get(), Integer.valueOf(newRef)));
 
-		String symbol = pOrder.getInstrumentID();
-		String exchange = CtpConstant.exchangeMapReverse.get(pOrder.getExchangeID());
-		String rtSymbol = symbol + "." + exchange;
+		order.symbol = pOrder.getInstrumentID();
+		order.exchange = CtpConstant.exchangeMapReverse.get(pOrder.getExchangeID());
 		/*
 		 * CTP的报单号一致性维护需要基于frontID, sessionID, orderID三个字段
 		 * 但在本接口设计中,已经考虑了CTP的OrderRef的自增性,避免重复 唯一可能出现OrderRef重复的情况是多处登录并在非常接近的时间内（几乎同时发单
 		 */
-		String orderID = pOrder.getOrderRef();
-		String rtOrderID = gatewayName + "." + orderID;
-		String direction = CtpConstant.directionMapReverse.get(pOrder.getDirection());
-		String offset = CtpConstant.offsetMapReverse.get(pOrder.getCombOffsetFlag().toCharArray()[0]);
-		double price = pOrder.getLimitPrice();
-		int totalVolume = pOrder.getVolumeTotalOriginal();
-		int tradedVolume = pOrder.getVolumeTraded();
-		String status = CtpConstant.statusMapReverse.get(pOrder.getOrderStatus());
-		String tradingDay = tradingDayStr;
-		String orderDate = pOrder.getInsertDate();
-		String orderTime = pOrder.getInsertTime();
-		String cancelTime = pOrder.getCancelTime();
-		String activeTime = pOrder.getActiveTime();
-		String updateTime = pOrder.getUpdateTime();
-
-		//todo : handle order return
-
+		order.orderId = pOrder.getOrderRef();
+		order.direction = CtpConstant.directionMapReverse.get(pOrder.getDirection());
+		order.offset = CtpConstant.offsetMapReverse.get(pOrder.getCombOffsetFlag().toCharArray()[0]);
+		order.volume = pOrder.getVolumeTotalOriginal();
+		order.tradedVolume = pOrder.getVolumeTraded();
+		order.status = pOrder.getOrderStatus();
+		order.msg = pOrder.getStatusMsg();
+		order.tradingDay = pOrder.getTradingDay();
+		order.insertTime = pOrder.getInsertTime();
+		order.cancelTime = pOrder.getCancelTime();
+		order.activeTime = pOrder.getActiveTime();
+		order.updateTime = pOrder.getUpdateTime();
+		writer.onReturnOrder(order);
 	}
 
 	// 成交回报
@@ -608,23 +613,7 @@ public class CTPTd extends CThostFtdcTraderSpi implements TD {
 		trade.setTradeTime(pTrade.getTradeTime());
 		trade.setTradeDate(pTrade.getTradeDate());
 
-		String symbol = pTrade.getInstrumentID();
-		String exchange = CtpConstant.exchangeMapReverse.get(pTrade.getExchangeID());
-		String rtSymbol = trade.getSymbol() + "." + trade.getExchange();
-		String tradeID = pTrade.getTradeID();
-		String rtTradeID = gatewayName + "." + trade.getTradeID();
-		String orderID = pTrade.getOrderRef();
-		String rtOrderID = gatewayName + "." + pTrade.getOrderRef();
-		String direction = CtpConstant.directionMapReverse.getOrDefault(pTrade.getDirection(), "");
-		String offset = CtpConstant.offsetMapReverse.getOrDefault(pTrade.getOffsetFlag(), "");
-		double price = pTrade.getPrice();
-		int volume = pTrade.getVolume();
-		String tradingDay = tradingDayStr;
-		String tradeDate = pTrade.getTradeDate();
-		String tradeTime = pTrade.getTradeTime();
-		DateTime dateTime = null;
-
-		// todo : handler Trade
+		writer.onReturnTrade(trade);
 	}
 
 	// 发单错误回报（交易所）

@@ -18,9 +18,17 @@ public class Order implements Serializable{
 
 	public double price; // 报单价格
 	public int volume; // 报单总数量
+	public int tradedVolume;
+	public char status;
+	public String msg;
+	public String tradingDay;
 	public String direction; // 报单方向
 	public String offset; // 报单开平仓
 	public String priceType; // 报单成交数量
+	public String insertTime;
+	public String cancelTime;
+	public String activeTime;
+	public String updateTime;
 
 	@Override
 	public String toString() {

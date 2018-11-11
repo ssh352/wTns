@@ -3,6 +3,7 @@ package wizard.base;
 import java.io.File;
 import java.io.IOException;
 
+import net.openhft.chronicle.bytes.MethodReader;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +40,7 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 	public CThostFtdcMdApi cThostFtdcMdApi;
 	public Board board;
 	public Strategy writer;
+	public MethodReader reader;
 
 	private boolean connecting = false;
 	private boolean connected = false;
@@ -55,7 +57,8 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 		this.symbols = symbols;
 		this.board = board;
 		board.addEngine(gatewayLogInfo, this);
-		this.writer = board.getWriterByName("md", gatewayLogInfo).methodWriter(Strategy.class);
+		this.writer = board.getWriterByName("stIn", gatewayLogInfo).methodWriter(Strategy.class);
+		this.reader = board.getReaderByName("mdIn", gatewayLogInfo).methodReader(this);
 	}
 
 	static{
@@ -113,11 +116,10 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 		connecting = true;
 		cThostFtdcMdApi.Init();
 		// todo : why raw not join ?
-		cThostFtdcMdApi.Join();
-		//while(true){
-		//	System.currentTimeMillis();
-		//}
-		return true;
+		//cThostFtdcMdApi.Join();
+		while(true){
+			this.reader.readOne();
+		}
 	}
 
 	public synchronized boolean stop() {
