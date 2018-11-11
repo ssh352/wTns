@@ -8,7 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import wizard.interfaces.MD;
-import wizard.test.EventListener;
+import wizard.interfaces.Strategy;
 import wizard.test.Tick;
 import wizard.tools.CommonUtil;
 import wizard.tools.StringUtils;
@@ -38,7 +38,7 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 	public String[] symbols;
 	public CThostFtdcMdApi cThostFtdcMdApi;
 	public Board board;
-	public EventListener writer;
+	public Strategy writer;
 
 	private boolean connecting = false;
 	private boolean connected = false;
@@ -55,7 +55,7 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 		this.symbols = symbols;
 		this.board = board;
 		board.addEngine(gatewayLogInfo, this);
-		this.writer = board.getWriterByName("md", gatewayLogInfo).methodWriter(EventListener.class);
+		this.writer = board.getWriterByName("md", gatewayLogInfo).methodWriter(Strategy.class);
 	}
 
 	static{
@@ -143,7 +143,7 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 		return tradingDayStr;
 	}
 
-	public void subscribe(String symbol) {
+	public void onSub(String symbol) {
 		if (alive()) {
 			String[] symbolArray = new String[1];
 			symbolArray[0] = symbol;
@@ -153,7 +153,7 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 		}
 	}
 
-	public void unSubscribe(String rtSymbol) {
+	public void onUnsub(String rtSymbol) {
 		if (alive()) {
 			String[] rtSymbolArray = new String[1];
 			rtSymbolArray[0] = rtSymbol;

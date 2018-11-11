@@ -16,7 +16,7 @@ import wizard.test.Account;
 import wizard.test.CancelOrderReq;
 import wizard.test.Contract;
 import wizard.test.DateTime;
-import wizard.test.OrderReq;
+import wizard.test.Order;
 import wizard.test.Position;
 import wizard.test.Trade;
 import wizard.tools.StringUtils;
@@ -200,26 +200,26 @@ public class CTPTd extends CThostFtdcTraderSpi implements TD {
 	/**
 	 * 发单
 	 * 
-	 * @param orderReq
+	 * @param order
 	 * @return
 	 */
-	public String sendOrder(OrderReq orderReq) {
+	public void onOrder(Order order) {
 		if (cThostFtdcTraderApi == null) {
 			log.info("{}尚未初始化,无法发单", gatewayName);
-			return null;
+			return;
 		}
 		CThostFtdcInputOrderField cThostFtdcInputOrderField = new CThostFtdcInputOrderField();
 		orderRef.incrementAndGet();
-		cThostFtdcInputOrderField.setInstrumentID(orderReq.symbol);
-		cThostFtdcInputOrderField.setLimitPrice(orderReq.price);
-		cThostFtdcInputOrderField.setVolumeTotalOriginal(orderReq.volume);
+		cThostFtdcInputOrderField.setInstrumentID(order.symbol);
+		cThostFtdcInputOrderField.setLimitPrice(order.price);
+		cThostFtdcInputOrderField.setVolumeTotalOriginal(order.volume);
 
 		cThostFtdcInputOrderField.setOrderPriceType(
-				CtpConstant.priceTypeMap.getOrDefault(orderReq.priceType, Character.valueOf('\0')));
+				CtpConstant.priceTypeMap.getOrDefault(order.priceType, Character.valueOf('\0')));
 		cThostFtdcInputOrderField
-				.setDirection(CtpConstant.directionMap.getOrDefault(orderReq.direction, Character.valueOf('\0')));
+				.setDirection(CtpConstant.directionMap.getOrDefault(order.direction, Character.valueOf('\0')));
 		cThostFtdcInputOrderField.setCombOffsetFlag(
-				String.valueOf(CtpConstant.offsetMap.getOrDefault(orderReq.offset, Character.valueOf('\0'))));
+				String.valueOf(CtpConstant.offsetMap.getOrDefault(order.offset, Character.valueOf('\0'))));
 		cThostFtdcInputOrderField.setOrderRef(orderRef.get() + "");
 		cThostFtdcInputOrderField.setInvestorID(userID);
 		cThostFtdcInputOrderField.setUserID(userID);
@@ -235,30 +235,29 @@ public class CTPTd extends CThostFtdcTraderSpi implements TD {
 		cThostFtdcInputOrderField.setMinVolume(1);
 
 		// 判断FAK FOK市价单
-		if (RtConstant.PRICETYPE_FAK.equals(orderReq.priceType)) {
+		if (RtConstant.PRICETYPE_FAK.equals(order.priceType)) {
 			cThostFtdcInputOrderField.setOrderPriceType(jctptraderapiv6v3v11x64Constants.THOST_FTDC_OPT_LimitPrice);
 			cThostFtdcInputOrderField.setTimeCondition(jctptraderapiv6v3v11x64Constants.THOST_FTDC_TC_IOC);
 			cThostFtdcInputOrderField.setVolumeCondition(jctptraderapiv6v3v11x64Constants.THOST_FTDC_VC_AV);
-		} else if (RtConstant.PRICETYPE_FOK.equals(orderReq.priceType)) {
+		} else if (RtConstant.PRICETYPE_FOK.equals(order.priceType)) {
 			cThostFtdcInputOrderField.setOrderPriceType(jctptraderapiv6v3v11x64Constants.THOST_FTDC_OPT_LimitPrice);
 			cThostFtdcInputOrderField.setTimeCondition(jctptraderapiv6v3v11x64Constants.THOST_FTDC_TC_IOC);
 			cThostFtdcInputOrderField.setVolumeCondition(jctptraderapiv6v3v11x64Constants.THOST_FTDC_VC_CV);
 		}
 
-		// if("IH1805".equals(orderReq.getSymbol())) {
+		// if("IH1805".equals(order.getSymbol())) {
 		// System.out.println("T2T-OrderBefore-"+System.nanoTime());
 		// }
 		cThostFtdcTraderApi.ReqOrderInsert(cThostFtdcInputOrderField, reqID.incrementAndGet());
-		// if("IH1805".equals(orderReq.getSymbol())) {
+		// if("IH1805".equals(order.getSymbol())) {
 		// System.out.println("T2T-Order-"+System.nanoTime());
 		// }
 		String rtOrderID = gatewayName + "." + orderRef.get();
-
-		return rtOrderID;
+		// todo : how to trasfer orderID ?
 	}
 
 	// 撤单
-	public void cancelOrder(CancelOrderReq cancelOrderReq) {
+	public void onCancelOrder(Order cancelOrder) {
 
 		if (cThostFtdcTraderApi == null) {
 			log.info("{}尚未初始化,无法撤单", gatewayName);
@@ -266,9 +265,9 @@ public class CTPTd extends CThostFtdcTraderSpi implements TD {
 		}
 		CThostFtdcInputOrderActionField cThostFtdcInputOrderActionField = new CThostFtdcInputOrderActionField();
 
-		cThostFtdcInputOrderActionField.setInstrumentID(cancelOrderReq.getSymbol());
-		cThostFtdcInputOrderActionField.setExchangeID(cancelOrderReq.getExchange());
-		cThostFtdcInputOrderActionField.setOrderRef(cancelOrderReq.getOrderID());
+		cThostFtdcInputOrderActionField.setInstrumentID(cancelOrder.symbol);
+		cThostFtdcInputOrderActionField.setExchangeID(cancelOrder.exchange);
+		cThostFtdcInputOrderActionField.setOrderRef(cancelOrder.orderId);
 		cThostFtdcInputOrderActionField.setFrontID(frontID);
 		cThostFtdcInputOrderActionField.setSessionID(sessionID);
 

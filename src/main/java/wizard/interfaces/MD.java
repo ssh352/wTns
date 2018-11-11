@@ -7,4 +7,6 @@ package wizard.interfaces;
  * @author: whitelilis@gmail.com on 18/10/29
  */
 public interface MD extends Engine {
+    void onSub(String symbol);
+    void onUnsub(String symbol);
 }
