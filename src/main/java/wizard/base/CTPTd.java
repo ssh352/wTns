@@ -8,40 +8,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import wizard.interfaces.CtpConstant;
 import wizard.interfaces.RtConstant;
 import wizard.interfaces.TD;
-import wizard.test.Account;
-import wizard.test.CancelOrderReq;
-import wizard.test.Contract;
-import wizard.test.DateTime;
-import wizard.test.Order;
-import wizard.test.Position;
-import wizard.test.Trade;
+import wizard.test.*;
 import wizard.tools.StringUtils;
-import xyz.redtorch.api.jctp.CThostFtdcInputOrderActionField;
-import xyz.redtorch.api.jctp.CThostFtdcInputOrderField;
-import xyz.redtorch.api.jctp.CThostFtdcInstrumentField;
-import xyz.redtorch.api.jctp.CThostFtdcInvestorPositionField;
-import xyz.redtorch.api.jctp.CThostFtdcOrderActionField;
-import xyz.redtorch.api.jctp.CThostFtdcOrderField;
-import xyz.redtorch.api.jctp.CThostFtdcQryInstrumentField;
-import xyz.redtorch.api.jctp.CThostFtdcQryInvestorPositionField;
-import xyz.redtorch.api.jctp.CThostFtdcQryTradingAccountField;
-import xyz.redtorch.api.jctp.CThostFtdcQueryMaxOrderVolumeField;
-import xyz.redtorch.api.jctp.CThostFtdcReqAuthenticateField;
-import xyz.redtorch.api.jctp.CThostFtdcReqUserLoginField;
-import xyz.redtorch.api.jctp.CThostFtdcRspAuthenticateField;
-import xyz.redtorch.api.jctp.CThostFtdcRspInfoField;
-import xyz.redtorch.api.jctp.CThostFtdcRspUserLoginField;
-import xyz.redtorch.api.jctp.CThostFtdcSettlementInfoConfirmField;
-import xyz.redtorch.api.jctp.CThostFtdcTradeField;
-import xyz.redtorch.api.jctp.CThostFtdcTraderApi;
-import xyz.redtorch.api.jctp.CThostFtdcTraderSpi;
-import xyz.redtorch.api.jctp.CThostFtdcTradingAccountField;
-import xyz.redtorch.api.jctp.CThostFtdcUserLogoutField;
-import xyz.redtorch.api.jctp.jctptraderapiv6v3v11x64Constants;
+import xyz.redtorch.api.jctp.*;
 
 /**
  * @author whitelilis@gmail.com
