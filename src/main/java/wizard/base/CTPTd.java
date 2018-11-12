@@ -94,10 +94,6 @@ public class CTPTd extends CThostFtdcTraderSpi implements TD {
 		board.addEngine(gatewayName, this);
 		this.writer = Board.getStrategyWriter();
 		this.reader = board.getReaderByName("tdIn", gatewayName).methodReader(this);
-
-
-
-
 	}
 
 	static{
@@ -478,7 +474,7 @@ public class CTPTd extends CThostFtdcTraderSpi implements TD {
 		}
 
 		// 查询所有合约
-		/*
+		/*  // todo : here bug, will terminated out c++
 		CThostFtdcQryInstrumentField cThostFtdcQryInstrumentField = new CThostFtdcQryInstrumentField();
 		cThostFtdcTraderApi.ReqQryInstrument(cThostFtdcQryInstrumentField, reqID.incrementAndGet());
 		*/
