@@ -173,6 +173,11 @@ public class CTPTd extends CThostFtdcTraderSpi implements TD {
 		return true;
 	}
 
+	@Override
+	public String getName() {
+		return tdName;
+	}
+
 	/**
 	 * 返回接口状态
 	 *

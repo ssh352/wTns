@@ -37,32 +37,36 @@ public class Board {
         return queue.acquireAppender();
     }
 
-    public static synchronized ExcerptTailer getReaderByName(String type, String name){
+    public static synchronized ExcerptTailer getReaderByName(String type, String name, boolean fromEnd){
         String path = getPathByName(type, name);
         SingleChronicleQueue queue = SingleChronicleQueueBuilder.binary(path).build();
-        return queue.createTailer();
+        if(fromEnd) {
+            return queue.createTailer().toEnd();
+        } else {
+            return queue.createTailer();
+        }
     }
 
     public static synchronized Strategy getStrategyWriter(){
         return getWriterByName("stIn", "common").methodWriter(Strategy.class);
     }
 
-    public static synchronized MethodReader getStrategyReader(Strategy strategy){
-        return Board.getReaderByName("stIn", "common").methodReader(strategy);
+    public static synchronized MethodReader getStrategyReader(Strategy strategy, boolean fromEnd){
+        return Board.getReaderByName("stIn", "common", fromEnd).methodReader(strategy);
     }
         public static synchronized MD getMdWriter(String mdName){
         return getWriterByName("mdIn", mdName).methodWriter(MD.class);
     }
 
     public static synchronized MethodReader getMdReader(CTPMd ctpMd){
-        return Board.getReaderByName("mdIn", ctpMd.mdName).methodReader(ctpMd);
+        return Board.getReaderByName("mdIn", ctpMd.mdName, true).methodReader(ctpMd);
     }
      public static synchronized TD getTdWriter(String tdName){
         return getWriterByName("tdIn", tdName).methodWriter(TD.class);
     }
 
     public static synchronized MethodReader getTdReader(CTPTd ctpTd){
-        return Board.getReaderByName("tdIn", ctpTd.tdName).methodReader(ctpTd);
+        return Board.getReaderByName("tdIn", ctpTd.tdName, true).methodReader(ctpTd);
     }
 
 

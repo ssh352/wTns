@@ -10,4 +10,5 @@ public interface Engine {
     boolean alive();
     boolean start();
     boolean stop();
+    String getName();
 }

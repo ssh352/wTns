@@ -137,6 +137,11 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 		return true;
 	}
 
+	@Override
+	public String getName() {
+		return mdName;
+	}
+
 	public boolean alive() {
 		return connected && loginned;
 	}
