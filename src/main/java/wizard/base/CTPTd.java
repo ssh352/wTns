@@ -5,17 +5,43 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import net.openhft.chronicle.bytes.MethodReader;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import net.openhft.chronicle.bytes.MethodReader;
 import wizard.interfaces.CtpConstant;
 import wizard.interfaces.RtConstant;
 import wizard.interfaces.Strategy;
 import wizard.interfaces.TD;
-import wizard.test.*;
+import wizard.test.Account;
+import wizard.test.Contract;
+import wizard.test.Order;
+import wizard.test.Position;
+import wizard.test.Trade;
+import wizard.tools.CommonUtil;
 import wizard.tools.StringUtils;
-import xyz.redtorch.api.jctp.*;
+import xyz.redtorch.api.jctp.CThostFtdcInputOrderActionField;
+import xyz.redtorch.api.jctp.CThostFtdcInputOrderField;
+import xyz.redtorch.api.jctp.CThostFtdcInstrumentField;
+import xyz.redtorch.api.jctp.CThostFtdcInvestorPositionField;
+import xyz.redtorch.api.jctp.CThostFtdcOrderActionField;
+import xyz.redtorch.api.jctp.CThostFtdcOrderField;
+import xyz.redtorch.api.jctp.CThostFtdcQryInvestorPositionField;
+import xyz.redtorch.api.jctp.CThostFtdcQryTradingAccountField;
+import xyz.redtorch.api.jctp.CThostFtdcQueryMaxOrderVolumeField;
+import xyz.redtorch.api.jctp.CThostFtdcReqAuthenticateField;
+import xyz.redtorch.api.jctp.CThostFtdcReqUserLoginField;
+import xyz.redtorch.api.jctp.CThostFtdcRspAuthenticateField;
+import xyz.redtorch.api.jctp.CThostFtdcRspInfoField;
+import xyz.redtorch.api.jctp.CThostFtdcRspUserLoginField;
+import xyz.redtorch.api.jctp.CThostFtdcSettlementInfoConfirmField;
+import xyz.redtorch.api.jctp.CThostFtdcTradeField;
+import xyz.redtorch.api.jctp.CThostFtdcTraderApi;
+import xyz.redtorch.api.jctp.CThostFtdcTraderSpi;
+import xyz.redtorch.api.jctp.CThostFtdcTradingAccountField;
+import xyz.redtorch.api.jctp.CThostFtdcUserLogoutField;
+import xyz.redtorch.api.jctp.jctptraderapiv6v3v11x64Constants;
 
 /**
  * @author whitelilis@gmail.com
@@ -41,19 +67,6 @@ public class CTPTd extends CThostFtdcTraderSpi implements TD {
 	private HashMap<String, String> contractExchangeMap;
 	private HashMap<String, Integer> contractSizeMap;
 
-	CTPTd(Board board, String tdAddress, String brokerID, String userID, String password, String authCode, String gatewayName) {
-		this.tdAddress   = tdAddress;
-		this.brokerID    = brokerID;
-		this.userID      = userID;
-		this.password    = password;
-		this.authCode    = authCode;
-		this.gatewayName = gatewayName;
-		this.board       = board;
-		board.addEngine(gatewayName, this);
-		this.writer = board.getWriterByName("stIn", gatewayName).methodWriter(Strategy.class);
-		this.reader = board.getReaderByName("tdIn", gatewayName).methodReader(this);
-	}
-
 	private CThostFtdcTraderApi cThostFtdcTraderApi;
 
 	private boolean connecting = false; // 避免重复调用
@@ -69,6 +82,41 @@ public class CTPTd extends CThostFtdcTraderSpi implements TD {
 
 	private int frontID = 0; // 前置机编号
 	private int sessionID = 0; // 会话编号
+
+	CTPTd(Board board, String tdAddress, String brokerID, String userID, String password, String authCode, String gatewayName) {
+		this.tdAddress   = tdAddress;
+		this.brokerID    = brokerID;
+		this.userID      = userID;
+		this.password    = password;
+		this.authCode    = authCode;
+		this.gatewayName = gatewayName;
+		this.board       = board;
+		board.addEngine(gatewayName, this);
+		this.writer = board.getWriterByName("stIn", gatewayName).methodWriter(Strategy.class);
+		this.reader = board.getReaderByName("tdIn", gatewayName).methodReader(this);
+
+
+
+
+	}
+
+	static{
+		try {
+			String envTmpDir = "/tmp";
+			String tempLibPath = envTmpDir + File.separator + "xyz" + File.separator + "redtorch" + File.separator + "api"
+					+ File.separator + "jctp" + File.separator + "lib";
+			String[] libPartNames = {"jctptraderapiv6v3v11x64", "thosttraderapi", "jctpmdapiv6v3v11x64", "thostmduserapi"};
+			for(String libPart : libPartNames) {
+				CommonUtil.copyURLToFileForTmp(tempLibPath, TD.class.getResource("/assembly/lib" + libPart + ".so"));
+			}
+			for(String libPart : libPartNames){
+				System.load(tempLibPath + File.separator + "lib" + libPart + ".so");
+			}
+		}catch (Exception e){
+			e.printStackTrace();
+			System.exit(-189);
+		}
+	}
 
 	/**
 	 * 连接
@@ -108,8 +156,9 @@ public class CTPTd extends CThostFtdcTraderSpi implements TD {
 		cThostFtdcTraderApi.RegisterFront(tdAddress);
 		connecting = true;
 		cThostFtdcTraderApi.Init();
-		while(true){
-			this.reader.readOne();
+		while (true) {
+			reader.readOne();
+			System.err.println("call once");
 		}
 	}
 
@@ -134,7 +183,7 @@ public class CTPTd extends CThostFtdcTraderSpi implements TD {
 
 	/**
 	 * 返回接口状态
-	 * 
+	 *
 	 * @return
 	 */
 	public boolean alive() {
@@ -143,7 +192,7 @@ public class CTPTd extends CThostFtdcTraderSpi implements TD {
 
 	/**
 	 * 获取交易日
-	 * 
+	 *
 	 * @return
 	 */
 	public String getTradingDayDay() {
@@ -180,11 +229,12 @@ public class CTPTd extends CThostFtdcTraderSpi implements TD {
 
 	/**
 	 * 发单
-	 * 
+	 *
 	 * @param order
 	 * @return
 	 */
 	public void onOrder(Order order) {
+		System.err.println("call on order");
 		if (cThostFtdcTraderApi == null) {
 			log.info("{}尚未初始化,无法发单", gatewayName);
 			return;
@@ -239,7 +289,7 @@ public class CTPTd extends CThostFtdcTraderSpi implements TD {
 
 	// 撤单
 	public void onCancelOrder(Order cancelOrder) {
-
+		System.err.println("call on cancel order");
 		if (cThostFtdcTraderApi == null) {
 			log.info("{}尚未初始化,无法撤单", gatewayName);
 			return;
@@ -304,7 +354,7 @@ public class CTPTd extends CThostFtdcTraderSpi implements TD {
 
 	// 登录回报
 	public void OnRspUserLogin(CThostFtdcRspUserLoginField pRspUserLogin, CThostFtdcRspInfoField pRspInfo,
-			int nRequestID, boolean bIsLast) {
+							   int nRequestID, boolean bIsLast) {
 		if (pRspInfo.getErrorID() == 0) {
 			log.info("{} 交易接口登录成功! TradingDay:{},SessionID:{},BrokerID:{},UserID:{}", gatewayName,
 					pRspUserLogin.getTradingDay(), pRspUserLogin.getSessionID(), pRspUserLogin.getBrokerID(),
@@ -337,7 +387,7 @@ public class CTPTd extends CThostFtdcTraderSpi implements TD {
 
 	// 登出回报
 	public void OnRspUserLogout(CThostFtdcUserLogoutField pUserLogout, CThostFtdcRspInfoField pRspInfo, int nRequestID,
-			boolean bIsLast) {
+								boolean bIsLast) {
 		if (pRspInfo.getErrorID() != 0) {
 			log.info("{}OnRspUserLogout!ErrorID:{},ErrorMsg:{}", gatewayName, pRspInfo.getErrorID(),
 					pRspInfo.getErrorMsg());
@@ -358,7 +408,7 @@ public class CTPTd extends CThostFtdcTraderSpi implements TD {
 
 	// 验证客户端回报
 	public void OnRspAuthenticate(CThostFtdcRspAuthenticateField pRspAuthenticateField, CThostFtdcRspInfoField pRspInfo,
-			int nRequestID, boolean bIsLast) {
+								  int nRequestID, boolean bIsLast) {
 
 		if (pRspInfo.getErrorID() == 0) {
 			authStatus = true;
@@ -375,7 +425,7 @@ public class CTPTd extends CThostFtdcTraderSpi implements TD {
 
 	// 发单错误（柜台）
 	public void OnRspOrderInsert(CThostFtdcInputOrderField pInputOrder, CThostFtdcRspInfoField pRspInfo, int nRequestID,
-			boolean bIsLast) {
+								 boolean bIsLast) {
 
 		String symbol = pInputOrder.getInstrumentID();
 		String exchange = CtpConstant.exchangeMapReverse.get(pInputOrder.getExchangeID());
@@ -407,19 +457,19 @@ public class CTPTd extends CThostFtdcTraderSpi implements TD {
 
 	// 撤单错误回报（柜台）
 	public void OnRspOrderAction(CThostFtdcInputOrderActionField pInputOrderAction, CThostFtdcRspInfoField pRspInfo,
-			int nRequestID, boolean bIsLast) {
+								 int nRequestID, boolean bIsLast) {
 
 		log.error("{}交易接口撤单错误（柜台）! ErrorID:{},ErrorMsg:{}", gatewayName, pRspInfo.getErrorID(),
 				pRspInfo.getErrorMsg());
 	}
 
 	public void OnRspQueryMaxOrderVolume(CThostFtdcQueryMaxOrderVolumeField pQueryMaxOrderVolume,
-			CThostFtdcRspInfoField pRspInfo, int nRequestID, boolean bIsLast) {
+										 CThostFtdcRspInfoField pRspInfo, int nRequestID, boolean bIsLast) {
 	}
 
 	// 确认结算信息回报
 	public void OnRspSettlementInfoConfirm(CThostFtdcSettlementInfoConfirmField pSettlementInfoConfirm,
-			CThostFtdcRspInfoField pRspInfo, int nRequestID, boolean bIsLast) {
+										   CThostFtdcRspInfoField pRspInfo, int nRequestID, boolean bIsLast) {
 
 		if (pRspInfo.getErrorID() == 0) {
 			log.warn("{}交易接口结算信息确认完成!", gatewayName);
@@ -429,14 +479,16 @@ public class CTPTd extends CThostFtdcTraderSpi implements TD {
 		}
 
 		// 查询所有合约
+		/*
 		CThostFtdcQryInstrumentField cThostFtdcQryInstrumentField = new CThostFtdcQryInstrumentField();
 		cThostFtdcTraderApi.ReqQryInstrument(cThostFtdcQryInstrumentField, reqID.incrementAndGet());
+		*/
 
 	}
 
 	// 持仓查询回报
 	public void OnRspQryInvestorPosition(CThostFtdcInvestorPositionField pInvestorPosition,
-			CThostFtdcRspInfoField pRspInfo, int nRequestID, boolean bIsLast) {
+										 CThostFtdcRspInfoField pRspInfo, int nRequestID, boolean bIsLast) {
 
 		if (pInvestorPosition == null || StringUtils.isEmpty(pInvestorPosition.getInstrumentID())) {
 			return;
@@ -501,7 +553,7 @@ public class CTPTd extends CThostFtdcTraderSpi implements TD {
 
 	// 账户查询回报
 	public void OnRspQryTradingAccount(CThostFtdcTradingAccountField pTradingAccount, CThostFtdcRspInfoField pRspInfo,
-			int nRequestID, boolean bIsLast) {
+									   int nRequestID, boolean bIsLast) {
 		Account account = new Account();
 		account.setAccountID(pTradingAccount.getAccountID());
 		account.setAvailable(pTradingAccount.getAvailable());
@@ -524,7 +576,7 @@ public class CTPTd extends CThostFtdcTraderSpi implements TD {
 
 	// 合约查询回报
 	public void OnRspQryInstrument(CThostFtdcInstrumentField pInstrument, CThostFtdcRspInfoField pRspInfo,
-			int nRequestID, boolean bIsLast) {
+								   int nRequestID, boolean bIsLast) {
 		Contract contract = new Contract();
 		contract.setGatewayID(gatewayName);
 		contract.setSymbol(pInstrument.getInstrumentID());
@@ -560,8 +612,8 @@ public class CTPTd extends CThostFtdcTraderSpi implements TD {
 
 	// 委托回报
 	public void OnRtnOrder(CThostFtdcOrderField pOrder) {
-
-	    Order order = new Order();
+		System.err.println("in OnRtn");
+		Order order = new Order();
 		String newRef = pOrder.getOrderRef().replace(" ", "");
 		// 更新最大报单编号
 		orderRef = new AtomicInteger(Math.max(orderRef.get(), Integer.valueOf(newRef)));
@@ -647,6 +699,20 @@ public class CTPTd extends CThostFtdcTraderSpi implements TD {
 	public void OnErrRtnOrderAction(CThostFtdcOrderActionField pOrderAction, CThostFtdcRspInfoField pRspInfo) {
 		log.error("{}交易接口撤单错误回报（交易所）! ErrorID:{},ErrorMsg:{}", gatewayName, pRspInfo.getErrorID(),
 				pRspInfo.getErrorMsg());
+	}
+
+	public static void main(String[] args) throws InterruptedException {
+		if(args.length >= 2) {
+			Thread.sleep(Integer.parseInt(args[1]));
+		}
+		final String tdName = "fakeTd1";
+		String ctpTdAddress = "tcp://";
+		ctpTdAddress = ctpTdAddress + args[0];
+		Board board = new Board();
+
+		CTPTd ctpTd = new CTPTd(board, ctpTdAddress, "9999", "125268", "140706",
+				"", tdName);
+		ctpTd.start();
 	}
 
 }

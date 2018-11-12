@@ -3,11 +3,11 @@ package wizard.base;
 import java.io.File;
 import java.io.IOException;
 
-import net.openhft.chronicle.bytes.MethodReader;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import net.openhft.chronicle.bytes.MethodReader;
 import wizard.interfaces.MD;
 import wizard.interfaces.Strategy;
 import wizard.test.Tick;
