@@ -57,7 +57,7 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 		this.symbols = symbols;
 		this.board = board;
 		board.addEngine(gatewayLogInfo, this);
-		this.writer = board.getWriterByName("stIn", gatewayLogInfo).methodWriter(Strategy.class);
+		this.writer = Board.getStrategyWriter();
 		this.reader = board.getReaderByName("mdIn", gatewayLogInfo).methodReader(this);
 	}
 

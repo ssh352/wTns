@@ -2,11 +2,13 @@ package wizard.base;
 
 import java.util.concurrent.ConcurrentHashMap;
 
+import net.openhft.chronicle.bytes.MethodReader;
 import net.openhft.chronicle.queue.ExcerptAppender;
 import net.openhft.chronicle.queue.ExcerptTailer;
 import net.openhft.chronicle.queue.impl.single.SingleChronicleQueue;
 import net.openhft.chronicle.queue.impl.single.SingleChronicleQueueBuilder;
 import wizard.interfaces.Engine;
+import wizard.interfaces.Strategy;
 
 /**
  * Copyright (C) 2006-2017  AdMaster Co.Ltd.
@@ -37,5 +39,13 @@ public class Board {
         String path = getPathByName(type, name);
         SingleChronicleQueue queue = SingleChronicleQueueBuilder.binary(path).build();
         return queue.createTailer();
+    }
+
+    public static synchronized Strategy getStrategyWriter(){
+        return getWriterByName("stIn", "common").methodWriter(Strategy.class);
+    }
+
+    public static synchronized MethodReader getStrategyReader(Strategy strategy){
+        return Board.getReaderByName("stIn", "common").methodReader(strategy);
     }
 }

@@ -12,8 +12,7 @@ import wizard.interfaces.Strategy;
  */
 public class ST1 implements Strategy {
     public static void main(String[] args) {
-        String f1 = "fakeMd1";
-        MethodReader reader = Board.getReaderByName("md", f1).methodReader(new ST1());
+        MethodReader reader = Board.getStrategyReader(new ST1());
         while (true) {
             reader.readOne();
         }

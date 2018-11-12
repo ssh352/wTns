@@ -92,7 +92,7 @@ public class CTPTd extends CThostFtdcTraderSpi implements TD {
 		this.gatewayName = gatewayName;
 		this.board       = board;
 		board.addEngine(gatewayName, this);
-		this.writer = board.getWriterByName("stIn", gatewayName).methodWriter(Strategy.class);
+		this.writer = Board.getStrategyWriter();
 		this.reader = board.getReaderByName("tdIn", gatewayName).methodReader(this);
 
 
@@ -158,7 +158,6 @@ public class CTPTd extends CThostFtdcTraderSpi implements TD {
 		cThostFtdcTraderApi.Init();
 		while (true) {
 			reader.readOne();
-			System.err.println("call once");
 		}
 	}
 
