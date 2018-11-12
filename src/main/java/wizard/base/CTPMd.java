@@ -34,7 +34,7 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 	public String brokerID;
 	public String userID;
 	public String password;
-	public String gatewayLogInfo;
+	public String mdName;
 	public String tradingDayStr;
 	public String[] symbols;
 	public CThostFtdcMdApi cThostFtdcMdApi;
@@ -48,17 +48,17 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 
 
 	public CTPMd(Board board, String mdAddress, String brokerID, String userID, String password,
-		  String gatewayLogInfo, String[] symbols) {
+		  String mdName, String[] symbols) {
 		this.mdAddress = mdAddress;
 		this.brokerID = brokerID;
 		this.userID = userID;
 		this.password = password;
-		this.gatewayLogInfo = gatewayLogInfo;
+		this.mdName = mdName;
 		this.symbols = symbols;
 		this.board = board;
-		board.addEngine(gatewayLogInfo, this);
+		board.addEngine(mdName, this);
 		this.writer = Board.getStrategyWriter();
-		this.reader = board.getReaderByName("mdIn", gatewayLogInfo).methodReader(this);
+		this.reader = Board.getMdReader(this);
 	}
 
 	static{
@@ -103,12 +103,12 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 		if (!tempFile.getParentFile().exists()) {
 			try {
 				FileUtils.forceMkdirParent(tempFile);
-				log.info(gatewayLogInfo + "make tmp dir " + tempFile.getParentFile().getAbsolutePath());
+				log.info(mdName + "make tmp dir " + tempFile.getParentFile().getAbsolutePath());
 			} catch (IOException e) {
-				log.error(gatewayLogInfo + "make tmp dir failed " + tempFile.getParentFile().getAbsolutePath());
+				log.error(mdName + "make tmp dir failed " + tempFile.getParentFile().getAbsolutePath());
 			}
 		}
-		log.info(gatewayLogInfo + "using " + tempFile.getParentFile().getAbsolutePath());
+		log.info(mdName + "using " + tempFile.getParentFile().getAbsolutePath());
 
 		cThostFtdcMdApi = CThostFtdcMdApi.CreateFtdcMdApi(tempFile.getAbsolutePath());
 		cThostFtdcMdApi.RegisterSpi(this);
@@ -151,7 +151,7 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 			symbolArray[0] = symbol;
 			cThostFtdcMdApi.SubscribeMarketData(symbolArray, 1);
 		} else {
-			log.warn(gatewayLogInfo + "can't subscribe, not connected yet");
+			log.warn(mdName + "can't subscribe, not connected yet");
 		}
 	}
 
@@ -161,13 +161,13 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 			rtSymbolArray[0] = rtSymbol;
 			cThostFtdcMdApi.UnSubscribeMarketData(rtSymbolArray, 1);
 		} else {
-			log.warn(gatewayLogInfo + "can't unsubscribe, not conneted yet");
+			log.warn(mdName + "can't unsubscribe, not conneted yet");
 		}
 	}
 
 	private void login() {
 		if (StringUtils.isEmpty(brokerID) || StringUtils.isEmpty(userID) || StringUtils.isEmpty(password)) {
-			log.error(gatewayLogInfo + "BrokerID UserID Password can't be empty");
+			log.error(mdName + "BrokerID UserID Password can't be empty");
 			return;
 		}
 		CThostFtdcReqUserLoginField userLoginField = new CThostFtdcReqUserLoginField();
@@ -178,47 +178,47 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 	}
 
 	public void OnFrontConnected() {
-		log.info(gatewayLogInfo + "front machine is connected");
+		log.info(mdName + "front machine is connected");
 		connected = true;
 		connecting = false;
 		login();
 	}
 
 	public void OnFrontDisconnected(int nReason) {
-		log.info(gatewayLogInfo + "front machine is disconnected, Reason:" + nReason);
+		log.info(mdName + "front machine is disconnected, Reason:" + nReason);
 		this.connected = false;
 	}
 
 	public void OnRspUserLogin(CThostFtdcRspUserLoginField pRspUserLogin, CThostFtdcRspInfoField pRspInfo,
 			int nRequestID, boolean bIsLast) {
 		if (pRspInfo.getErrorID() == 0) {
-			log.info("{}OnRspUserLogin! TradingDay:{},SessionID:{},BrokerID:{},UserID:{}", gatewayLogInfo,
+			log.info("{}OnRspUserLogin! TradingDay:{},SessionID:{},BrokerID:{},UserID:{}", mdName,
 					pRspUserLogin.getTradingDay(), pRspUserLogin.getSessionID(), pRspUserLogin.getBrokerID(),
 					pRspUserLogin.getUserID());
 			this.loginned = true;
 			tradingDayStr = pRspUserLogin.getTradingDay();
-			log.info("{} get trading day {}", gatewayLogInfo, tradingDayStr);
+			log.info("{} get trading day {}", mdName, tradingDayStr);
 			if (this.symbols != null && this.symbols.length > 0) {
 				cThostFtdcMdApi.SubscribeMarketData(this.symbols, this.symbols.length);
 			}
 		} else {
-			log.warn("{}md login error! ErrorID:{},ErrorMsg:{}", gatewayLogInfo, pRspInfo.getErrorID(),
+			log.warn("{}md login error! ErrorID:{},ErrorMsg:{}", mdName, pRspInfo.getErrorID(),
 					pRspInfo.getErrorMsg());
 		}
 
 	}
 
 	public void OnHeartBeatWarning(int nTimeLapse) {
-		log.warn(gatewayLogInfo + "md heartbeat nTimeLapse:" + nTimeLapse);
+		log.warn(mdName + "md heartbeat nTimeLapse:" + nTimeLapse);
 	}
 
 	public void OnRspUserLogout(CThostFtdcUserLogoutField pUserLogout, CThostFtdcRspInfoField pRspInfo, int nRequestID,
 			boolean bIsLast) {
 		if (pRspInfo.getErrorID() != 0) {
-			log.info("{} OnRspUserLogout!ErrorID:{}, ErrorMsg:{}", gatewayLogInfo, pRspInfo.getErrorID(),
+			log.info("{} OnRspUserLogout!ErrorID:{}, ErrorMsg:{}", mdName, pRspInfo.getErrorID(),
 					pRspInfo.getErrorMsg());
 		} else {
-			log.info("{} OnRspUserLogout!BrokerID:{}, UserID:{}", gatewayLogInfo, pUserLogout.getBrokerID(),
+			log.info("{} OnRspUserLogout!BrokerID:{}, UserID:{}", mdName, pUserLogout.getBrokerID(),
 					pUserLogout.getUserID());
 
 		}
@@ -226,16 +226,16 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 	}
 
 	public void OnRspError(CThostFtdcRspInfoField pRspInfo, int nRequestID, boolean bIsLast) {
-		log.info("{}md respError !ErrorID:{},ErrorMsg:{},RequestID:{},isLast{}", gatewayLogInfo, pRspInfo.getErrorID(),
+		log.info("{}md respError !ErrorID:{},ErrorMsg:{},RequestID:{},isLast{}", mdName, pRspInfo.getErrorID(),
 				pRspInfo.getErrorMsg(), nRequestID, bIsLast);
 	}
 
 	public void OnRspSubMarketData(CThostFtdcSpecificInstrumentField pSpecificInstrument,
 			CThostFtdcRspInfoField pRspInfo, int nRequestID, boolean bIsLast) {
 		if (pRspInfo.getErrorID() == 0) {
-			log.info(gatewayLogInfo + "OnRspSubMarketData! subscribe succeed: " + pSpecificInstrument.getInstrumentID());
+			log.info(mdName + "OnRspSubMarketData! subscribe succeed: " + pSpecificInstrument.getInstrumentID());
 		} else {
-			log.warn(gatewayLogInfo + "OnRspSubMarketData! subscribe failed, ErrorID：" + pRspInfo.getErrorID() + "ErrorMsg:"
+			log.warn(mdName + "OnRspSubMarketData! subscribe failed, ErrorID：" + pRspInfo.getErrorID() + "ErrorMsg:"
 					+ pRspInfo.getErrorMsg());
 		}
 	}
@@ -243,9 +243,9 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 	public void OnRspUnSubMarketData(CThostFtdcSpecificInstrumentField pSpecificInstrument,
 			CThostFtdcRspInfoField pRspInfo, int nRequestID, boolean bIsLast) {
 		if (pRspInfo.getErrorID() == 0) {
-			log.info(gatewayLogInfo + "OnRspUnSubMarketData! succeed :" + pSpecificInstrument.getInstrumentID());
+			log.info(mdName + "OnRspUnSubMarketData! succeed :" + pSpecificInstrument.getInstrumentID());
 		} else {
-			log.warn(gatewayLogInfo + "OnRspUnSubMarketData! failed, ErrorID：" + pRspInfo.getErrorID() + "ErrorMsg:"
+			log.warn(mdName + "OnRspUnSubMarketData! failed, ErrorID：" + pRspInfo.getErrorID() + "ErrorMsg:"
 					+ pRspInfo.getErrorMsg());
 		}
 	}
@@ -261,24 +261,24 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 			Long actionDay = Long.valueOf(pDepthMarketData.getActionDay());
 
 			//  todo : parse date time
-			writer.onTick(new Tick(gatewayLogInfo, pDepthMarketData));
+			writer.onTick(new Tick(mdName, pDepthMarketData));
 		} else {
-			log.warn("{}OnRtnDepthMarketData! get empty ticks", gatewayLogInfo);
+			log.warn("{}OnRtnDepthMarketData! get empty ticks", mdName);
 		}
 	}
 
 	public void OnRspSubForQuoteRsp(CThostFtdcSpecificInstrumentField pSpecificInstrument,
 			CThostFtdcRspInfoField pRspInfo, int nRequestID, boolean bIsLast) {
-		log.info("{}OnRspSubForQuoteRsp!", gatewayLogInfo);
+		log.info("{}OnRspSubForQuoteRsp!", mdName);
 	}
 
 	public void OnRspUnSubForQuoteRsp(CThostFtdcSpecificInstrumentField pSpecificInstrument,
 			CThostFtdcRspInfoField pRspInfo, int nRequestID, boolean bIsLast) {
-		log.info("{}OnRspUnSubForQuoteRsp!", gatewayLogInfo);
+		log.info("{}OnRspUnSubForQuoteRsp!", mdName);
 	}
 
 	public void OnRtnForQuoteRsp(CThostFtdcForQuoteRspField pForQuoteRsp) {
-		log.info("{}OnRspUnSubForQuoteRsp!", gatewayLogInfo);
+		log.info("{}OnRspUnSubForQuoteRsp!", mdName);
 	}
 
 	// todo : what to consider more
@@ -288,14 +288,13 @@ public class CTPMd extends CThostFtdcMdSpi implements MD {
 	// 4, comment using english
 	// 5, test auto reconnect
 	public static void main(String[] args) {
-		final String mdName = "fakeMd1";
-		String ctp1_MdAddress = "tcp://";
+		final String mdName = args[0];
+		String ctpMdAddress = "tcp://" + args[1];
 		String[] symbols = {"kk"};
-		ctp1_MdAddress = ctp1_MdAddress + args[0];
-		symbols[0] = args[1];
-		Board board = new Board();
+		symbols[0] = args[2];
 
-		CTPMd ctpMd = new CTPMd(board, ctp1_MdAddress, "9999", "125268", "140706",
+		Board board = new Board();
+		CTPMd ctpMd = new CTPMd(board, ctpMdAddress, "9999", "125268", "140706",
 				mdName, symbols);
 		ctpMd.start();
 	}

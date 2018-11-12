@@ -8,7 +8,9 @@ import net.openhft.chronicle.queue.ExcerptTailer;
 import net.openhft.chronicle.queue.impl.single.SingleChronicleQueue;
 import net.openhft.chronicle.queue.impl.single.SingleChronicleQueueBuilder;
 import wizard.interfaces.Engine;
+import wizard.interfaces.MD;
 import wizard.interfaces.Strategy;
+import wizard.interfaces.TD;
 
 /**
  * Copyright (C) 2006-2017  AdMaster Co.Ltd.
@@ -48,4 +50,22 @@ public class Board {
     public static synchronized MethodReader getStrategyReader(Strategy strategy){
         return Board.getReaderByName("stIn", "common").methodReader(strategy);
     }
+        public static synchronized MD getMdWriter(String mdName){
+        return getWriterByName("mdIn", mdName).methodWriter(MD.class);
+    }
+
+    public static synchronized MethodReader getMdReader(CTPMd ctpMd){
+        return Board.getReaderByName("mdIn", ctpMd.mdName).methodReader(ctpMd);
+    }
+     public static synchronized TD getTdWriter(String tdName){
+        return getWriterByName("tdIn", tdName).methodWriter(TD.class);
+    }
+
+    public static synchronized MethodReader getTdReader(CTPTd ctpTd){
+        return Board.getReaderByName("tdIn", ctpTd.tdName).methodReader(ctpTd);
+    }
+
+
+
+
 }
